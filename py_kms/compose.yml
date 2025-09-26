@@ -1,0 +1,21 @@
+networks:
+  caddy:
+    external: true
+
+volumes:
+  kms-db:
+
+services:
+  kms:
+    image: pykmsorg/py-kms:python3
+    ports:
+      - 1688:1688
+    labels:
+      - caddy=https://${FRONTEND_URL}
+      - caddy.reverse_proxy="{{upstreams 8080}}"
+    networks:
+      - caddy
+    restart: always
+    env_file: config.env
+    volumes:
+      - kms-db:/home/py-kms/db

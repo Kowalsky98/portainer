@@ -1,0 +1,31 @@
+version: "3.8"
+services:
+  pgadmin:
+    labels:
+      - caddy=https://${FRONTEND_URL}
+      - caddy.reverse_proxy="{{upstreams 80}}"
+    image: dpage/pgadmin4
+    container_name: pgadmin4_container
+    networks:
+      - caddy
+      - driver_sql
+    restart: always
+    env_file: config.env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'False'
+      PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: 10
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+volumes:
+  pgadmin-data:
+
+networks:
+  caddy:
+    external: true
+  driver_sql:
+    name: driver_sql
+    driver: bridge
+

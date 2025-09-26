@@ -1,0 +1,110 @@
+networks:
+  caddy:
+    external: true
+  chatwoot:
+    name: chatwoot_network
+    driver: bridge
+  driver_sql:
+    external: true
+
+volumes:
+  chatwoot_storage:
+    name: chatwoot_storage_data
+  chatwoot_public:
+    name: chatwoot_public_data
+  chatwoot_mailer:
+    name: chatwoot_mailer_views
+  chatwoot_mailers:
+    name: chatwoot_mailers_views
+  chatwoot_cache:
+    name: chatwoot_cache_data
+  bundle:
+    name: chatwoot_bundle
+  postgres:
+    name: postgres_data
+  redis_data:
+    name: redis_persistent_data
+
+services:
+  base: &base
+    image: chatwoot/chatwoot:v3.16.0-ce
+    env_file: stack.env ## Change this file for customized env variables
+    volumes:
+      - chatwoot_storage:/app/storage
+      - chatwoot_public:/app/public
+      - chatwoot_mailer:/app/app/views/devise/mailer
+      - chatwoot_mailers:/app/app/views/mailers
+      - chatwoot_cache:/app/tmp/cache
+      - bundle:/usr/local/bundle
+    networks:
+      - chatwoot
+
+  rails:
+    <<: *base
+    depends_on:
+      postgres-chatwoot:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - caddy=${FRONTEND_URL}
+      - caddy.reverse_proxy=/cable/* rails:3000
+      - caddy.reverse_proxy="{{upstreams 3000}}"
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+    entrypoint: docker/entrypoints/rails.sh
+    command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
+    restart: always
+    networks:
+      - caddy
+      - chatwoot
+
+  sidekiq:
+    <<: *base
+    depends_on:
+      - postgres-chatwoot
+      - redis
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+    command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+    restart: always
+    networks:
+      - chatwoot
+
+  postgres-chatwoot:
+    image: postgres:14.7-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: chatwoot
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - chatwoot
+      - driver_sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USERNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.0-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "$REDIS_PASSWORD"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - chatwoot
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

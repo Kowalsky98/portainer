@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:14.1-alpine
+    container_name: n8n_postgres
+    networks:
+      - driver_sql
+
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: n8ndb
+    volumes:
+      - n8n_postgres_data:/var/lib/postgresql/data
+
+  n8n:
+    image: n8nio/n8n:next
+    container_name: n8n
+    restart: always
+    labels:
+      - caddy=${FRONTEND_URL}
+      - caddy.reverse_proxy= "{{upstreams 5678}}"
+    networks:
+      - caddy
+      - driver_sql
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: n8n_postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8ndb
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_POSTGRESDB_SCHEMA: public
+      WEBHOOK_URL: https://${FRONTEND_URL}/
+      N8N_HOST: ${FRONTEND_URL}
+      N8N_BASIC_AUTH_ACTIVE: true
+      N8N_BASIC_AUTH_USER: ${N8N_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASS}
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: true 
+      GENERIC_TIMEZONE: America/Caracas
+    depends_on:
+      - postgres
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_postgres_data:
+  n8n_data:
+
+networks:
+  caddy:
+    external: true
+  driver_sql:
+    external: true
+

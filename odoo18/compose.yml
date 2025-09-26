@@ -1,0 +1,50 @@
+services:
+  postgres:
+    container_name: odoo-postgres
+    image: postgres:14.1-alpine
+    networks:
+      - caddy
+      - driver_sql
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: always
+  odoo:
+    container_name: odoo
+    image: odoo:18.0
+    labels:
+      - caddy=${FRONTEND_URL}
+      - caddy.reverse_proxy= "{{upstreams 8069}}"
+    ports:
+      - 8069:8069
+    networks:
+      - caddy
+    environment:
+      HOST: postgres
+      USER: ${POSTGRES_USER}
+      PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      - postgres
+    volumes:
+      - config:/etc/odoo
+      - extra-addons:/mnt/extra-addons
+      - data:/var/lib/odoo
+    restart: always
+    links:
+      - postgres
+
+volumes:
+  postgres-data:
+  config:
+  extra-addons:
+  data:
+  pgadmin-data:
+
+networks:
+  caddy:
+    external: true
+  driver_sql:
+    external: true

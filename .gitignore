@@ -1,0 +1,39 @@
+# Archivos de configuración de entorno
+*.env
+.env
+.env.local
+.env.production
+.env.staging
+.env.development
+
+# Archivos específicos de servicios
+chatwoot/stack.env
+evolution_api/config.env
+n8n/config.env
+odoo18/config.env
+pgadmin/config.env
+py_kms/config.env
+
+# Archivos de Docker
+.dockerignore
+
+# Logs
+*.log
+logs/
+
+# Archivos temporales
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Directorios de datos de Docker
+data/
+volumes/
+
+# Archivos de backup
+*.bak
+*.backup
+
+# Archivos de configuración local
+config.local.*
